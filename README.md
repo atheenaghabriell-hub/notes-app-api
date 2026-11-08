@@ -1,86 +1,59 @@
-# Notes App API Endpoint Documentation
+# Notes App PHP API
 
-## Endpoint
+## Local setup
 
-`http://localhost/notes-app/api/create_note.php`
-
-## Purpose
-
-This endpoint is responsible for creating and saving a new note in the Notes App database.
-
-It receives note information from the client application, validates the input, and inserts the data into the `notes` table within the MySQL database managed through XAMPP.
-
----
-
-## Environment
-
-- Local Development Server: XAMPP
-- Web Server: Apache
-- Database: MySQL / MariaDB
-- API Language: PHP
-- Base URL:
+Place this folder under XAMPP's `htdocs` directory and configure `db.php` with
+the MySQL database connection. The Android emulator reaches the API at:
 
 ```text
-http://localhost/notes-app/api/
+http://10.0.2.2/notes_app/
 ```
 
----
+The database must provide `users` and `notes` tables. The `notes` table fields
+used by the API are `id`, `user_id`, `title`, `content`, `create_at`, `category`,
+and `status`.
 
-## Request Method
+## Notes endpoints
 
-```http
-POST
-```
+All note mutations use `POST` form fields and return JSON with a `status`
+(`success` or `error`):
 
----
+- `create_note.php`: creates a note. Requires `user_id`, `title`, and `content`;
+  accepts optional `category`, `status`, and `client_id`.
+- `sync_notes.php`: upserts a JSON array of notes in one transaction. Each note
+  requires `user_id`, `title`, `content`, and either a server `id` or stable
+  `client_id`/`unique_id`. A non-numeric `id` (for example `local:...`) is
+  treated as the client ID. Optional fields are `category`, `status`, and
+  `created_at`. Successful responses include each input ID and its server
+  `note_id`; invalid items fail the whole batch without applying partial updates.
+- `edit_note.php`: updates `note_id`, `title`, `content`, and `category`.
+- `archive_note.php` / `restore_note.php`: change a note's status.
+- `delete_note_permanent.php`: permanently deletes a note.
+- `fetch_notes.php`: `GET` with `user_id` and optional `status` (`active` by default).
 
-## Request Parameters
+## Offline sync
 
-| Parameter | Type | Required | Description |
-|------------|--------|------------|-------------|
-| title | string | Yes | Note title |
-| content | string | Yes | Note content |
-| created_at | datetime | No | Automatically generated creation timestamp |
+The Android client stores changes in SQLite first and sends pending changes when
+network access returns. For offline-created notes it sends a stable `client_id`
+to `create_note.php`; the endpoint creates the `note_sync_map` table on demand
+and uses it to safely retry a create without duplicating the MySQL note.
 
-### Example Request
+The MySQL account must have permission to create `note_sync_map`. The table
+records the Android client ID and corresponding server note ID. Notes created by
+older clients without `client_id` continue to use the normal insert path.
+
+Example request body for `POST /sync_notes.php`:
 
 ```json
-{
-    "title": "Meeting Notes",
-    "content": "Discuss project milestones and deadlines."
-}
+[
+  {
+    "id": "local:550e8400-e29b-41d4-a716-446655440000",
+    "user_id": 1,
+    "title": "Offline note",
+    "content": "Saved without a connection",
+    "category": "Personal",
+    "status": "active",
+    "created_at": "2026-11-08 16:00:00"
+  }
+]
 ```
-
----
-
-## Database Operation
-
-The endpoint inserts a new record into:
-
-```sql
-notes
-```
-
-Example:
-
-```sql
-INSERT INTO notes (title, content)
-VALUES (?, ?);
-```
-
----
-
-## Success Response
-
-**HTTP Status:**
-
-```http
-200 OK
-```
-
-**Response Body:**
-
-```json
-{
-    "success": true,
-    "message": "Note
