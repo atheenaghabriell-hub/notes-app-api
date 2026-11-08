@@ -1,40 +1,33 @@
 <?php
-header("Content-Type: application/json");
+header('Content-Type: application/json');
+require_once __DIR__ . '/db.php';
 
-// Database credentials
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "notes_app";
+$user_id = $_GET['user_id'] ?? '';
+$status = $_GET['status'] ?? 'active';
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
+if (!empty($user_id)) {
+    $stmt = $conn->prepare("SELECT id, title, content, create_at, category, status FROM notes WHERE user_id = ? AND status = ? ORDER BY id DESC");
+    if ($stmt === false) {
+        echo json_encode(["status" => "error", "message" => "Failed to prepare notes query"]);
+        exit();
+    }
 
-if ($conn->connect_error) {
-    echo json_encode(["status" => "error", "message" => "Database connection failed"]);
-    exit();
-}
-
-// Check if user_id is provided via GET request
-if (isset($_GET['user_id'])) {
-    $user_id = trim($_GET['user_id']);
-
-    $stmt = $conn->prepare("SELECT id, title, content, create_at FROM notes WHERE user_id = ? ORDER BY create_at DESC");
-    $stmt->bind_param("i", $user_id);
+    $stmt->bind_param("is", $user_id, $status);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $notes = array();
+    $notes = [];
     while ($row = $result->fetch_assoc()) {
         $notes[] = $row;
     }
 
     echo json_encode(["status" => "success", "notes" => $notes]);
-
-    $stmt->close();
 } else {
-    echo json_encode(["status" => "error", "message" => "Missing user_id parameter"]);
+    echo json_encode(["status" => "error", "message" => "Invalid User ID"]);
 }
 
+if (isset($stmt) && $stmt instanceof mysqli_stmt) {
+    $stmt->close();
+}
 $conn->close();
 ?>
