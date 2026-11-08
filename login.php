@@ -25,8 +25,8 @@ if (empty($user) || empty($pass)) {
     exit();
 }
 
-// 3. Find the user in the database using prepared statements
-$stmt = $conn->prepare("SELECT id, password FROM users WHERE username = ?");
+// 3. Find the user in the database including theme_preference using prepared statements
+$stmt = $conn->prepare("SELECT id, password, theme_preference FROM users WHERE username = ?");
 $stmt->bind_param("s", $user);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -35,19 +35,20 @@ $result = $stmt->get_result();
 if ($row = $result->fetch_assoc()) {
     $hashed_password_from_db = $row['password'];
 
-    // 4. Verify the passowrd securely
+    // 4. Verify the password securely
     if (password_verify($pass, $hashed_password_from_db)) {
-      // Passwords match !! Send Back Success and the users's ID 
+      // Passwords match !! Send Back Success, user's ID, and theme preference
       echo json_encode([
         "status" => "success",
         "message" => "Login successful.",
-        "user_id" => $row['id']
+        "user_id" => $row['id'],
+        "theme_preference" => $row['theme_preference'] ?? 'light' // Default to 'light' kung walang laman
         ]);
     } else {
-        // Passoword is wrong
+        // Password is wrong
         echo json_encode(["status" => "error", "message" => "Invalid username or password."]);
     }
-}else {
+} else {
     // User doesn't exist
     echo json_encode(["status" => "error", "message" => "Invalid username or password."]);
 }
