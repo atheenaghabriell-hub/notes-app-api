@@ -2,6 +2,17 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/db.php';
 
+// Support both form-urlencoded/multipart and raw JSON request bodies
+if (empty($_POST)) {
+    $rawInput = file_get_contents('php://input');
+    if (!empty($rawInput)) {
+        $jsonInput = json_decode($rawInput, true);
+        if (is_array($jsonInput)) {
+            $_POST = $jsonInput;
+        }
+    }
+}
+
 $user = trim($_POST['username'] ?? '');
 $email = trim($_POST['email'] ?? '');
 $fullName = trim($_POST['full_name'] ?? $_POST['name'] ?? '');
@@ -66,7 +77,7 @@ try {
         echo json_encode([
             "status" => "success",
             "message" => "User registered successfully.",
-            "user_id" => $conn->insert_id
+            "user_id" => (int)$conn->insert_id
         ]);
     } else {
         http_response_code(500);

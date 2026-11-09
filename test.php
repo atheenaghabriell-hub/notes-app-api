@@ -23,6 +23,15 @@ try {
         $response['database'] = 'error: ' . $conn->connect_error;
     } else {
         $response['database'] = 'connected to ' . $dbname;
+        
+        // Count users and notes
+        $uRes = $conn->query("SELECT COUNT(*) AS total FROM users");
+        $nRes = $conn->query("SELECT COUNT(*) AS total FROM notes");
+        $response['stats'] = [
+            'total_users' => $uRes ? (int)$uRes->fetch_assoc()['total'] : 0,
+            'total_notes' => $nRes ? (int)$nRes->fetch_assoc()['total'] : 0
+        ];
+        
         $conn->close();
     }
 } catch (Throwable $e) {
